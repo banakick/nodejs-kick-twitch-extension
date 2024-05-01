@@ -8,10 +8,10 @@ app.use(express.json());
 
 // Configuración de la conexión a la base de datos MySQL
 const connection = mysql.createConnection({
-  host: 'localhost', // Reemplaza con la dirección de tu servidor MySQL
-  user: 'tu_usuario', // Reemplaza con tu usuario de MySQL
-  password: 'tu_contraseña', // Reemplaza con tu contraseña de MySQL
-  database: 'tu_base_de_datos' // Reemplaza con el nombre de tu base de datos
+  host: 'lind.com.ar',
+  user: 'u627195336_kickJS',
+  password: 'idldzc4yE2#z',
+  database: 'u627195336_kick'
 });
 
 // Ruta para obtener los puntos de un usuario
