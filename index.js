@@ -1,77 +1,55 @@
-import express from "express";
-import fs from "fs";
-import bodyParser from "body-parser";
+const express = require('express');
+const mysql = require('mysql');
+const cors = require('cors');
 
 const app = express();
-app.use(bodyParser.json());
+app.use(cors());
+app.use(express.json());
 
-const readData = () => {
-  try {
-    const data = fs.readFileSync("./db.json");
-    return JSON.parse(data);
-  } catch (error) {
-    console.log(error);
-  }
-};
-
-const writeData = (data) => {
-  try {
-    fs.writeFileSync("./db.json", JSON.stringify(data));
-  } catch (error) {
-    console.log(error);
-  }
-};
-
-app.get("/", (req, res) => {
-  res.send("Welcome to my first API with Node js!");
+// Configuración de la conexión a la base de datos MySQL
+const connection = mysql.createConnection({
+  host: 'localhost', // Reemplaza con la dirección de tu servidor MySQL
+  user: 'tu_usuario', // Reemplaza con tu usuario de MySQL
+  password: 'tu_contraseña', // Reemplaza con tu contraseña de MySQL
+  database: 'tu_base_de_datos' // Reemplaza con el nombre de tu base de datos
 });
 
-app.get("/books", (req, res) => {
-  const data = readData();
-  res.json(data.books);
+// Ruta para obtener los puntos de un usuario
+app.get('/puntos/:username', (req, res) => {
+  const username = req.params.username;
+
+  // Consulta para obtener los puntos del usuario
+  const query = 'SELECT puntos FROM usuarios WHERE username = ?';
+  connection.query(query, [username], (error, results) => {
+    if (error) throw error;
+
+    if (results.length > 0) {
+      // Si el usuario existe, envía los puntos
+      res.json({ puntos: results[0].puntos });
+    } else {
+      // Si el usuario no existe, crea uno nuevo con 0 puntos
+      const insertQuery = 'INSERT INTO usuarios (username, puntos) VALUES (?, 0)';
+      connection.query(insertQuery, [username], (error, results) => {
+        if (error) throw error;
+        res.json({ puntos: 0 });
+      });
+    }
+  });
 });
 
-app.get("/books/:id", (req, res) => {
-  const data = readData();
-  const id = parseInt(req.params.id);
-  const book = data.books.find((book) => book.id === id);
-  res.json(book);
+// Ruta para actualizar los puntos de un usuario
+app.put('/puntos/:username', (req, res) => {
+  const username = req.params.username;
+  const puntos = req.body.puntos;
+
+  // Consulta para actualizar los puntos del usuario
+  const query = 'UPDATE usuarios SET puntos = ? WHERE username = ?';
+  connection.query(query, [puntos, username], (error, results) => {
+    if (error) throw error;
+    res.json({ mensaje: 'Puntos actualizados correctamente' });
+  });
 });
 
-app.post("/books", (req, res) => {
-  const data = readData();
-  const body = req.body;
-  const newBook = {
-    id: data.books.length + 1,
-    ...body,
-  };
-  data.books.push(newBook);
-  writeData(data);
-  res.json(newBook);
-});
-
-app.put("/books/:id", (req, res) => {
-  const data = readData();
-  const body = req.body;
-  const id = parseInt(req.params.id);
-  const bookIndex = data.books.findIndex((book) => book.id === id);
-  data.books[bookIndex] = {
-    ...data.books[bookIndex],
-    ...body,
-  };
-  writeData(data);
-  res.json({ message: "Book updated successfully" });
-});
-
-app.delete("/books/:id", (req, res) => {
-  const data = readData();
-  const id = parseInt(req.params.id);
-  const bookIndex = data.books.findIndex((book) => book.id === id);
-  data.books.splice(bookIndex, 1);
-  writeData(data);
-  res.json({ message: "Book deleted successfully" });
-});
-
-app.listen(3000, () => {
-  console.log("Server listening on port 3000");
-});
+// Inicia el servidor
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Servidor escuchando en el puerto ${PORT}`));
