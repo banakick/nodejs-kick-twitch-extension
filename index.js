@@ -14,7 +14,7 @@ app.use(express.json());
 const connection = mysql.createConnection({
   host: 'lind.com.ar',
   user: 'u627195336_nodeJS',
-  password: '#kG~Pu06dE',
+  password: 'AuricularParlanteMouse25',
   database: 'u627195336_kicktwitch'
 });
 
