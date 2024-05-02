@@ -13,9 +13,9 @@ app.use(express.json());
 // Configuración de la conexión a la base de datos MySQL
 const connection = mysql.createConnection({
   host: 'srv1308.hstgr.io',
-  user: 'u627195336_kickJS',
+  user: 'u627195336_kicktwitchjs',
   password: 'AuricularParlanteMouse25',
-  database: 'u627195336_kicktwitchdata'
+  database: 'u627195336_datakicktwitch'
 });
 
 // Ruta para obtener los puntos de un usuario
