@@ -13,9 +13,9 @@ app.use(express.json());
 // Configuración de la conexión a la base de datos MySQL
 const connection = mysql.createConnection({
   host: 'lind.com.ar',
-  user: 'u627195336_kickJS',
-  password: 'idldzc4yE2#z',
-  database: 'u627195336_kick'
+  user: 'u627195336_nodeJS',
+  password: '#kG~Pu06dE',
+  database: 'u627195336_kicktwitch'
 });
 
 // Ruta para obtener los puntos de un usuario
