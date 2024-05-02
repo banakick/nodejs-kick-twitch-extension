@@ -3,9 +3,7 @@ import cors from 'cors';
 import mysql from 'mysql2';
 
 const app = express();
-app.use(cors({
-  origin: 'https://kick.com'
-}));
+app.use(cors());
 app.use(express.json());
 
 // Configuración de la conexión a la base de datos MySQL
