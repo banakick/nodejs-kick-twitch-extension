@@ -18,6 +18,18 @@ const connection = mysql.createConnection({
   database: 'u627195336_datakicktwitch'
 });
 
+// Manejo de errores de conexión
+connection.on('error', (err) => {
+  console.error('Error de conexión a la base de datos:', err);
+  if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+    // Se perdió la conexión, intentar reconectar
+    console.log('Intentando reconectar...');
+    connection = mysql.createConnection(connection.config);
+  } else {
+    throw err;
+  }
+});
+
 // Ruta para obtener los puntos de un usuario
 app.get('/puntos/:username', (req, res) => {
   const username = req.params.username;
@@ -52,6 +64,17 @@ app.put('/puntos/:username', (req, res) => {
     if (error) throw error;
     res.json({ mensaje: 'Puntos actualizados correctamente' });
   });
+});
+
+// Cierra la conexión al finalizar
+process.on('SIGINT', () => {
+  connection.end();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  connection.end();
+  process.exit(0);
 });
 
 // Inicia el servidor
