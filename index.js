@@ -4,7 +4,7 @@ import mysql from 'mysql';
 
 const app = express();
 const corsOptions = {
-  origin: 'https://kick.com',
+  origin: '*',
 };
 
 app.use(cors(corsOptions));
