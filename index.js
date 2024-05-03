@@ -19,18 +19,17 @@ app.use(express.json());
 app.post('/api/userdata', (req, res) => {
   const { username, points } = req.body;
 
-  // Verificar si el usuario existe en el almacenamiento
   if (userData[username]) {
-    // Actualizar los puntos del usuario existente
+    // Usuario existente
+    const previousPoints = userData[username];
     userData[username] = points;
+    res.json({ message: 'Datos de usuario actualizados', points, previousPoints });
   } else {
-    // Agregar un nuevo usuario con los puntos iniciales
+    // Nuevo usuario
     userData[username] = points;
+    res.json({ message: 'Datos de usuario creados', points });
   }
-
-  res.json({ message: 'Datos de usuario actualizados' });
 });
-
 app.listen(port, () => {
   console.log(`Servidor escuchando en http://localhost:${port}`);
 });
