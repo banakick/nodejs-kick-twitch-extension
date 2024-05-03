@@ -21,14 +21,13 @@ app.post('/api/userdata', (req, res) => {
   const { username, points } = req.body;
 
   if (userData[username]) {
+    // Usuario existente
+    const previousPoints = userData[username];
     userData[username] = points;
-    res.json({ message: 'Datos de usuario actualizados', points: userData[username] });
+    res.json({ message: 'Datos de usuario actualizados', points, previousPoints });
   } else {
+    // Nuevo usuario
     userData[username] = points;
-    res.json({ message: 'Datos de usuario creados', points: userData[username] });
+    res.json({ message: 'Datos de usuario creados', points });
   }
-});
-
-app.listen(port, () => {
-  console.log(`Servidor escuchando en http://localhost:${port}`);
 });
