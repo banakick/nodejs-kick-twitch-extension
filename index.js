@@ -1,6 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-import mysql from 'mysql';
 
 const port = 3000;
 const app = express();
@@ -21,13 +20,10 @@ app.post('/api/userdata', (req, res) => {
   const { username, points } = req.body;
 
   if (userData[username]) {
-    // Usuario existente
-    const previousPoints = userData[username];
     userData[username] = points;
-    res.json({ message: 'Datos de usuario actualizados', points, previousPoints });
+    res.json({ message: 'Datos de usuario actualizados', points: userData[username] });
   } else {
-    // Nuevo usuario
     userData[username] = points;
-    res.json({ message: 'Datos de usuario creados', points });
+    res.json({ message: 'Datos de usuario creados', points: userData[username] });
   }
 });
