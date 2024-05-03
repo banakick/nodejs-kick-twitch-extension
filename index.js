@@ -28,6 +28,7 @@ app.post('/api/userdata', (req, res) => {
 
     if (row) {
       // Usuario existente, actualizar puntos
+      console.log(`Actualizando puntos para ${username}: ${row.points} -> ${points}`);
       db.run('UPDATE users SET points = ? WHERE username = ?', [points, username], (err) => {
         if (err) {
           console.error(err);
