@@ -34,7 +34,7 @@ app.post('/api/userdata', (req, res) => {
           console.error(err);
           return res.status(500).json({ error: 'Error al actualizar puntos del usuario' });
         }
-        res.json({ message: 'Datos de usuario actualizados', points }); // Aquí se devuelven los puntos actualizados
+        res.json({ message: 'Datos de usuario actualizados', points });
       });
     } else {
       // Nuevo usuario, insertar en la base de datos
@@ -43,7 +43,7 @@ app.post('/api/userdata', (req, res) => {
           console.error(err);
           return res.status(500).json({ error: 'Error al crear usuario' });
         }
-        res.json({ message: 'Datos de usuario creados', points });
+        res.json({ message: 'Datos de usuario creados', points: 0 });
       });
     }
   });
