@@ -88,6 +88,7 @@ db.serialize(() => {
     }
   });
 });
+});
 app.listen(port, () => {
   console.log(`Servidor escuchando en http://localhost:${port}`);
 });
