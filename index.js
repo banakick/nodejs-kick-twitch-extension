@@ -34,6 +34,7 @@ app.post('/api/userdata', (req, res) => {
           console.error(err);
           return res.status(500).json({ error: 'Error al actualizar puntos del usuario' });
         }
+        res.setHeader('Content-Type', 'application/json'); // Agregar encabezado Content-Type
         res.json({ message: 'Datos de usuario actualizados', points });
       });
     } else {
@@ -43,6 +44,7 @@ app.post('/api/userdata', (req, res) => {
           console.error(err);
           return res.status(500).json({ error: 'Error al crear usuario' });
         }
+        res.setHeader('Content-Type', 'application/json'); // Agregar encabezado Content-Type
         res.json({ message: 'Datos de usuario creados', points: 0 });
       });
     }
