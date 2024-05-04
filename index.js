@@ -66,9 +66,9 @@ db.serialize(() => {
           console.error(err);
           return res.status(500).json({ error: 'Error al actualizar puntos del usuario' });
         }
-        console.log(`Puntos actualizados para ${username}: ${points}`); // Agregar este console.log
+        console.log(`Puntos actualizados para ${username}: ${points}`);
         res.setHeader('Content-Type', 'application/json');
-        res.json({ message: 'Datos de usuario actualizados', points });
+        res.json({ message: 'Datos de usuario actualizados', points }); // Devolver la nueva cantidad de puntos
         db.run('COMMIT');
       });
     } else {
