@@ -48,45 +48,44 @@ app.post('/api/userdata', (req, res) => {
 
   console.log(`Solicitud de actualización de puntos recibida: ${username}, ${points}`);
 
-  db.serialize(() => {
-    db.run('BEGIN TRANSACTION');
-    db.get('SELECT points FROM users WHERE username = ?', [username], (err, row) => {
-      if (err) {
-        db.run('ROLLBACK');
-        console.error(err);
-        return res.status(500).json({ error: 'Error al obtener datos del usuario' });
-      }
+db.serialize(() => {
+  db.run('BEGIN TRANSACTION');
+  db.get('SELECT points FROM users WHERE username = ?', [username], (err, row) => {
+    if (err) {
+      db.run('ROLLBACK');
+      console.error(err);
+      return res.status(500).json({ error: 'Error al obtener datos del usuario' });
+    }
 
-      if (row) {
-        // Usuario existente, actualizar puntos
-        console.log(`Actualizando puntos para ${username}: ${row.points} -> ${points}`);
-        db.run('UPDATE users SET points = ? WHERE username = ?', [points, username], (err) => {
-          if (err) {
-            db.run('ROLLBACK');
-            console.error(err);
-            return res.status(500).json({ error: 'Error al actualizar puntos del usuario' });
-          }
-          console.log(`Puntos actualizados para ${username}: ${points}`);
-          res.setHeader('Content-Type', 'application/json');
-          res.json({ message: 'Datos de usuario actualizados', points });
-          db.run('COMMIT');
-        });
-      } else {
-        // Nuevo usuario, insertar en la base de datos
-        console.log(`Nuevo usuario ${username}, creando con 0 puntos.`);
-        db.run('INSERT INTO users (username, points) VALUES (?, ?)', [username, points], (err) => {
-          if (err) {
-            db.run('ROLLBACK');
-            console.error(err);
-            return res.status(500).json({ error: 'Error al crear usuario' });
-          }
-          console.log(`Usuario ${username} creado con 0 puntos.`);
-          res.setHeader('Content-Type', 'application/json');
-          res.json({ message: 'Datos de usuario creados', points: 0 });
-          db.run('COMMIT');
-        });
-      }
-    });
+    if (row) {
+      // Usuario existente, actualizar puntos
+      console.log(`Actualizando puntos para ${username}: ${row.points} -> ${points}`);
+      db.run('UPDATE users SET points = ? WHERE username = ?', [points, username], (err) => {
+        if (err) {
+          db.run('ROLLBACK');
+          console.error(err);
+          return res.status(500).json({ error: 'Error al actualizar puntos del usuario' });
+        }
+        console.log(`Puntos actualizados para ${username}: ${points}`); // Agregar este console.log
+        res.setHeader('Content-Type', 'application/json');
+        res.json({ message: 'Datos de usuario actualizados', points });
+        db.run('COMMIT');
+      });
+    } else {
+      // Nuevo usuario, insertar en la base de datos
+      console.log(`Nuevo usuario ${username}, creando con ${points} puntos.`);
+      db.run('INSERT INTO users (username, points) VALUES (?, ?)', [username, points], (err) => {
+        if (err) {
+          db.run('ROLLBACK');
+          console.error(err);
+          return res.status(500).json({ error: 'Error al crear usuario' });
+        }
+        console.log(`Usuario ${username} creado con ${points} puntos.`);
+        res.setHeader('Content-Type', 'application/json');
+        res.json({ message: 'Datos de usuario creados', points });
+        db.run('COMMIT');
+      });
+    }
   });
 });
 app.listen(port, () => {
