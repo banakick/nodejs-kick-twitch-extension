@@ -11,12 +11,34 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// Almacenamiento de datos de usuario
-const userData = {};
-
 // Middleware para analizar el cuerpo de la solicitud como JSON
 app.use(express.json());
 
+// Ruta para manejar solicitudes GET a /api/userdata?username=...
+app.get('/api/userdata', (req, res) => {
+  const { username } = req.query;
+
+  if (!username) {
+    return res.status(400).json({ error: 'Se requiere el parámetro "username"' });
+  }
+
+  db.get('SELECT points FROM users WHERE username = ?', [username], (err, row) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Error al obtener datos del usuario' });
+    }
+
+    if (row) {
+      res.setHeader('Content-Type', 'application/json');
+      res.json({ points: row.points });
+    } else {
+      res.setHeader('Content-Type', 'application/json');
+      res.json({ points: 0 });
+    }
+  });
+});
+
+// Ruta para manejar solicitudes POST a /api/userdata
 app.post('/api/userdata', (req, res) => {
   const { username, points } = req.body;
 
@@ -34,7 +56,7 @@ app.post('/api/userdata', (req, res) => {
           console.error(err);
           return res.status(500).json({ error: 'Error al actualizar puntos del usuario' });
         }
-        res.setHeader('Content-Type', 'application/json'); // Agregar encabezado Content-Type
+        res.setHeader('Content-Type', 'application/json');
         res.json({ message: 'Datos de usuario actualizados', points });
       });
     } else {
@@ -44,7 +66,7 @@ app.post('/api/userdata', (req, res) => {
           console.error(err);
           return res.status(500).json({ error: 'Error al crear usuario' });
         }
-        res.setHeader('Content-Type', 'application/json'); // Agregar encabezado Content-Type
+        res.setHeader('Content-Type', 'application/json');
         res.json({ message: 'Datos de usuario creados', points: 0 });
       });
     }
