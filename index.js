@@ -11,6 +11,41 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+app.get('/api/userdata', (req, res) => {
+  const { username, action } = req.query;
+
+  if (!username || !action) {
+    return res.status(400).json({ error: 'Se requieren los parámetros "username" y "action"' });
+  }
+
+  if (action === 'isKickUsernameSaved') {
+    db.get('SELECT COUNT(*) AS count FROM users WHERE username = ?', [username], (err, row) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Error al verificar el usuario' });
+      }
+
+      const isKickUsernameSaved = row.count > 0;
+      res.json({ isKickUsernameSaved });
+    });
+  } else if (action === 'getPoints') {
+    db.get('SELECT points FROM users WHERE username = ?', [username], (err, row) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Error al obtener datos del usuario' });
+      }
+
+      if (row) {
+        res.json({ points: row.points });
+      } else {
+        res.json({ points: 0 });
+      }
+    });
+  } else {
+    return res.status(400).json({ error: 'Acción no válida' });
+  }
+});
+
 app.post('/api/userdata', async (req, res) => {
   const { username, points, action } = req.body;
 
