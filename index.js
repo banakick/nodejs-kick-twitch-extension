@@ -52,8 +52,12 @@ function backupDataToFile() {
 loadDataFromBackup();
 setInterval(backupDataToFile, 15 * 60 * 1000);
 
-app.post('/api/userdata', async (req, res) => {
-  const { username, points, action } = req.body;
+app.get('/api/userdata', (req, res) => {
+  const { username, action } = req.query;
+
+  if (!username || !action) {
+    return res.status(400).json({ error: 'Se requieren los parámetros "username" y "action"' });
+  }
 
   if (action === 'isKickUsernameSaved') {
     db.get('SELECT COUNT(*) AS count FROM users WHERE username = ?', [username], (err, row) => {
@@ -78,7 +82,15 @@ app.post('/api/userdata', async (req, res) => {
         res.json({ points: 0 });
       }
     });
-  } else if (action === 'createUser') {
+  } else {
+    return res.status(400).json({ error: 'Acción no válida' });
+  }
+});
+
+app.post('/api/userdata', async (req, res) => {
+  const { username, points, action } = req.body;
+
+  if (action === 'createUser') {
     db.run('INSERT INTO users (username, points) VALUES (?, ?)', [username, points], (err) => {
       if (err) {
         console.error(err);
