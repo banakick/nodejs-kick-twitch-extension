@@ -88,6 +88,9 @@ function updateBlockedUsersFile() {
   }
 }
 
+const GRACE_PERIOD_MS = 10000; // 10 segundos
+const usersCountingPoints = {};
+
 loadDataFromBackup();
 setInterval(backupDataToFile, 15 * 60 * 1000);
 
@@ -150,29 +153,94 @@ app.post('/api/userdata', checkUsername, async (req, res) => {
   }
 });
 
-app.post('/ban', (req, res) => {
+app.post('/api/startcounting', checkUsername, (req, res) => {
   const { username } = req.body;
 
   if (!username) {
     return res.status(400).json({ error: 'Se requiere el nombre de usuario' });
   }
 
-  if (blockedUsernames.includes(username)) {
-    return res.status(400).json({ error: 'El nombre de usuario ya está bloqueado' });
+  usersCountingPoints[username] = {
+    startTime: Date.now(),
+    countingPoints: true
+  };
+
+  res.json({ message: 'Comenzando a contar puntos' });
+});
+
+app.post('/api/finishedcounting', checkUsername, (req, res) => {
+  const { username } = req.body;
+
+  if (!username) {
+    return res.status(400).json({ error: 'Se requiere el nombre de usuario' });
   }
 
-  blockedUsernames.push(username);
+  const userCountingPoints = usersCountingPoints[username];
 
-  try {
-    jsonfile.writeFileSync(blockedUsersFilePath, blockedUsernames, { spaces: 2 });
-    updateBlockedUsersFile(); // Llamar a la función para actualizar el archivo
-    res.json({ message: 'Nombre de usuario bloqueado' });
-  } catch (err) {
-    console.error('Error al escribir el archivo blockedusers.json:', err);
-    res.status(500).json({ error: 'Error al bloquear el nombre de usuario' });
+  if (!userCountingPoints || !userCountingPoints.countingPoints) {
+    return res.status(400).json({ error: 'El usuario no estaba contando puntos' });
   }
+
+  const elapsedTime = Date.now() - userCountingPoints.startTime;
+  const elapsedMinutes = Math.floor(elapsedTime / 60000); // 60000 ms = 1 minuto
+
+  if (elapsedMinutes >= 5) {
+    const additionalGraceTime = elapsedTime % 60000 + GRACE_PERIOD_MS;
+    const totalTimeWithGrace = elapsedMinutes * 60000 + additionalGraceTime;
+
+    if (totalTimeWithGrace >= 5 * 60000) {
+      db.get('SELECT points FROM users WHERE username = ?', [username], (err, row) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: 'Error al obtener datos del usuario' });
+        }
+
+        const currentPoints = row ? row.points : 0;
+        const newPoints = currentPoints + 50;
+
+        db.run('UPDATE users SET points = ? WHERE username = ?', [newPoints, username], (err) => {
+          if (err) {
+            console.error(err);
+           return res.status(500).json({ error: 'Error al actualizar puntos del usuario' });
+         }
+
+         delete usersCountingPoints[username];
+         res.json({ points: newPoints });
+       });
+     });
+   } else {
+     delete usersCountingPoints[username];
+     res.status(400).json({ error: 'No se cumplieron los 5 minutos de conteo, incluso con el período de gracia' });
+   }
+ } else {
+   delete usersCountingPoints[username];
+   res.status(400).json({ error: 'No se cumplieron los 5 minutos de conteo' });
+ }
+});
+
+app.post('/ban', (req, res) => {
+ const { username } = req.body;
+
+ if (!username) {
+   return res.status(400).json({ error: 'Se requiere el nombre de usuario' });
+ }
+
+ if (blockedUsernames.includes(username)) {
+   return res.status(400).json({ error: 'El nombre de usuario ya está bloqueado' });
+ }
+
+ blockedUsernames.push(username);
+
+ try {
+   jsonfile.writeFileSync(blockedUsersFilePath, blockedUsernames, { spaces: 2 });
+   updateBlockedUsersFile(); // Llamar a la función para actualizar el archivo
+   res.json({ message: 'Nombre de usuario bloqueado' });
+ } catch (err) {
+   console.error('Error al escribir el archivo blockedusers.json:', err);
+   res.status(500).json({ error: 'Error al bloquear el nombre de usuario' });
+ }
 });
 
 app.listen(port, () => {
-  console.log(`Servidor escuchando en http://localhost:${port}`);
+ console.log(`Servidor escuchando en http://localhost:${port}`);
 });
