@@ -10,9 +10,41 @@ const corsOptions = {
 };
 const db = new sqlite3.Database('database.sqlite');
 const backupFilePath = './db.json';
+const blockedUsersFilePath = './blockedusers.json';
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+let blockedUsernames = [];
+
+try {
+  blockedUsernames = jsonfile.readFileSync(blockedUsersFilePath);
+} catch (err) {
+  console.error('Error al leer el archivo blockedusers.json:', err);
+}
+
+const checkUsername = (req, res, next) => {
+  const { username } = req.query || req.body;
+
+  if (username && blockedUsernames.includes(username)) {
+    return res.status(403).json({ error: 'El nombre de usuario está bloqueado' });
+  }
+
+  db.get('SELECT COUNT(*) AS count FROM users WHERE username = ?', [username], (err, row) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Error al verificar el usuario' });
+    }
+
+    if (row.count > 0) {
+      if (blockedUsernames.includes(username)) {
+        return res.status(403).json({ error: 'El nombre de usuario está bloqueado' });
+      }
+    }
+
+    next();
+  });
+};
 
 function loadDataFromBackup() {
   try {
@@ -36,41 +68,35 @@ function backupDataToFile() {
       console.error('Error al obtener datos de usuarios:', err);
       return;
     }
+
     const data = rows.reduce((acc, row) => {
       acc[row.username] = row.points;
       return acc;
     }, {});
+
     jsonfile.writeFileSync(backupFilePath, data, { spaces: 2 });
     console.log('Datos guardados en el archivo de respaldo');
   });
 }
 
-// Crear tablas para predicciones y votos
-db.run(`
-  CREATE TABLE IF NOT EXISTS predictions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    options TEXT NOT NULL,
-    duration INTEGER NOT NULL,
-    createdAt INTEGER NOT NULL,
-    expiresAt INTEGER NOT NULL
-  )
-`);
+function updateBlockedUsersFile() {
+  try {
+    jsonfile.writeFileSync(blockedUsersFilePath, blockedUsernames, { spaces: 2 });
+    console.log('Archivo blockedusers.json actualizado');
+  } catch (err) {
+    console.error('Error al escribir el archivo blockedusers.json:', err);
+  }
+}
 
-db.run(`
-  CREATE TABLE IF NOT EXISTS votes (
-    predictionId INTEGER NOT NULL,
-    username TEXT NOT NULL,
-    option TEXT NOT NULL,
-    FOREIGN KEY (predictionId) REFERENCES predictions(id)
-  )
-`);
+const GRACE_PERIOD_MS = 10000; // 10 segundos
+const usersCountingPoints = {};
 
 loadDataFromBackup();
 setInterval(backupDataToFile, 15 * 60 * 1000);
 
-app.get('/api/userdata', (req, res) => {
+app.get('/api/userdata', checkUsername, (req, res) => {
   const { username, action } = req.query;
+
   if (!username || !action) {
     return res.status(400).json({ error: 'Se requieren los parámetros "username" y "action"' });
   }
@@ -81,6 +107,7 @@ app.get('/api/userdata', (req, res) => {
         console.error(err);
         return res.status(500).json({ error: 'Error al verificar el usuario' });
       }
+
       const isKickUsernameSaved = row.count > 0;
       res.json({ isKickUsernameSaved });
     });
@@ -90,6 +117,7 @@ app.get('/api/userdata', (req, res) => {
         console.error(err);
         return res.status(500).json({ error: 'Error al obtener datos del usuario' });
       }
+
       if (row) {
         res.json({ points: row.points });
       } else {
@@ -101,15 +129,36 @@ app.get('/api/userdata', (req, res) => {
   }
 });
 
-app.post('/api/userdata', async (req, res) => {
+app.post('/api/userdata', checkUsername, async (req, res) => {
   const { username, points, action } = req.body;
+
   if (action === 'createUser') {
-    db.run('INSERT INTO users (username, points) VALUES (?, ?)', [username, points], (err) => {
+    // Verificar si el usuario ya existe antes de intentar crearlo
+    db.get('SELECT COUNT(*) AS count FROM users WHERE username = ?', [username], (err, row) => {
       if (err) {
         console.error(err);
-        return res.status(500).json({ error: 'Error al crear usuario' });
+        return res.status(500).json({ error: 'Error al verificar el usuario' });
       }
-      res.json({ message: 'Usuario creado', points });
+
+      if (row.count > 0) {
+        // El usuario ya existe, actualizar sus puntos
+        db.run('UPDATE users SET points = ? WHERE username = ?', [points, username], (err) => {
+          if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Error al actualizar puntos del usuario' });
+          }
+          res.json({ message: 'Puntos actualizados', points });
+        });
+      } else {
+        // El usuario no existe, crearlo
+        db.run('INSERT INTO users (username, points) VALUES (?, ?)', [username, points], (err) => {
+          if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Error al crear usuario' });
+          }
+          res.json({ message: 'Usuario creado', points });
+        });
+      }
     });
   } else if (action === 'updatePoints') {
     db.run('UPDATE users SET points = ? WHERE username = ?', [points, username], (err) => {
@@ -124,106 +173,94 @@ app.post('/api/userdata', async (req, res) => {
   }
 });
 
-// Ruta para crear una nueva predicción
-app.post('/api/predictions', (req, res) => {
-  const { name, options, duration } = req.body;
+app.post('/api/startcounting', checkUsername, (req, res) => {
+  const { username } = req.body;
 
-  if (!name || !options || !duration) {
-    return res.status(400).json({ error: 'Se requieren los campos "name", "options" y "duration"' });
+  if (!username) {
+    return res.status(400).json({ error: 'Se requiere el nombre de usuario' });
   }
 
-  const createdAt = Math.floor(Date.now() / 1000);
-  const expiresAt = createdAt + duration * 60;
+  usersCountingPoints[username] = {
+    startTime: Date.now(),
+    countingPoints: true
+  };
 
-  db.run(
-    'INSERT INTO predictions (name, options, duration, createdAt, expiresAt) VALUES (?, ?, ?, ?, ?)',
-    [name, JSON.stringify(options), duration, createdAt, expiresAt],
-    function (err) {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'Error al crear la predicción' });
-      }
-
-      res.json({ id: this.lastID });
-    }
-  );
+  res.json({ message: 'Comenzando a contar puntos' });
 });
 
-// Ruta para obtener los detalles de una predicción existente
-app.get('/api/predictions/:id', (req, res) => {
-  const predictionId = req.params.id;
+app.post('/api/finishedcounting', checkUsername, (req, res) => {
+  const { username } = req.body;
 
-  db.get(
-    'SELECT * FROM predictions WHERE id = ?',
-    [predictionId],
-    (err, row) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'Error al obtener la predicción' });
-      }
+  if (!username) {
+    return res.status(400).json({ error: 'Se requiere el nombre de usuario' });
+  }
 
-      if (!row) {
-        return res.status(404).json({ error: 'Predicción no encontrada' });
-      }
+  const userCountingPoints = usersCountingPoints[username];
 
-      const options = JSON.parse(row.options);
-      const optionVotes = options.reduce((acc, option) => {
-        acc[option] = 0;
-        return acc;
-      }, {});
+  if (!userCountingPoints || !userCountingPoints.countingPoints) {
+    return res.status(400).json({ error: 'El usuario no estaba contando puntos' });
+  }
 
-      db.all(
-        'SELECT option, COUNT(*) AS count FROM votes WHERE predictionId = ? GROUP BY option',
-        [predictionId],
-        (err, rows) => {
+  const elapsedTime = Date.now() - userCountingPoints.startTime;
+  const elapsedMinutes = Math.floor(elapsedTime / 60000); // 60000 ms = 1 minuto
+
+  if (elapsedMinutes >= 5) {
+    const additionalGraceTime = elapsedTime % 60000 + GRACE_PERIOD_MS;
+    const totalTimeWithGrace = elapsedMinutes * 60000 + additionalGraceTime;
+
+    if (totalTimeWithGrace >= 5 * 60000) {
+      db.get('SELECT points FROM users WHERE username = ?', [username], (err, row) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: 'Error al obtener datos del usuario' });
+        }
+
+        const currentPoints = row ? row.points : 0;
+        const newPoints = currentPoints + 50;
+
+        db.run('UPDATE users SET points = ? WHERE username = ?', [newPoints, username], (err) => {
           if (err) {
             console.error(err);
-            return res.status(500).json({ error: 'Error al obtener los votos' });
-          }
+           return res.status(500).json({ error: 'Error al actualizar puntos del usuario' });
+         }
 
-          rows.forEach(row => {
-            optionVotes[row.option] = row.count;
-          });
-
-          const prediction = {
-            id: row.id,
-            name: row.name,
-            options: options,
-            optionVotes: optionVotes,
-            duration: row.duration,
-            createdAt: row.createdAt,
-            expiresAt: row.expiresAt
-          };
-
-          res.json(prediction);
-        }
-      );
-    }
-  );
+         delete usersCountingPoints[username];
+         res.json({ points: newPoints });
+       });
+     });
+   } else {
+     delete usersCountingPoints[username];
+     res.status(400).json({ error: 'No se cumplieron los 5 minutos de conteo, incluso con el período de gracia' });
+   }
+ } else {
+   delete usersCountingPoints[username];
+   res.status(400).json({ error: 'No se cumplieron los 5 minutos de conteo' });
+ }
 });
 
-// Ruta para enviar votos
-app.post('/api/votes', (req, res) => {
-  const { predictionId, username, option } = req.body;
+app.post('/ban', (req, res) => {
+ const { username } = req.body;
 
-  if (!predictionId || !username || !option) {
-    return res.status(400).json({ error: 'Se requieren los campos "predictionId", "username" y "option"' });
-  }
+ if (!username) {
+   return res.status(400).json({ error: 'Se requiere el nombre de usuario' });
+ }
 
-  db.run(
-    'INSERT INTO votes (predictionId, username, option) VALUES (?, ?, ?)',
-    [predictionId, username, option],
-    function (err) {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'Error al enviar el voto' });
-      }
+ if (blockedUsernames.includes(username)) {
+   return res.status(400).json({ error: 'El nombre de usuario ya está bloqueado' });
+ }
 
-      res.json({ success: true });
-    }
-  );
+ blockedUsernames.push(username);
+
+ try {
+   jsonfile.writeFileSync(blockedUsersFilePath, blockedUsernames, { spaces: 2 });
+   updateBlockedUsersFile(); // Llamar a la función para actualizar el archivo
+   res.json({ message: 'Nombre de usuario bloqueado' });
+ } catch (err) {
+   console.error('Error al escribir el archivo blockedusers.json:', err);
+   res.status(500).json({ error: 'Error al bloquear el nombre de usuario' });
+ }
 });
 
 app.listen(port, () => {
-  console.log(`Servidor escuchando en http://localhost:${port}`);
+ console.log(`Servidor escuchando en http://localhost:${port}`);
 });
