@@ -10,15 +10,23 @@ const corsOptions = {
 };
 const db = new sqlite3.Database('database.sqlite');
 const backupFilePath = './db.json';
+const blockedUsersFilePath = './blockedusers.json';
 
 app.use(cors(corsOptions));
 app.use(express.json());
 
-const blockedUsernames = ['bostermo27', 'nex772', 'witherdeaffox', 'lindyellowtest', 'frandroid-alt', 'frandroid'];
+let blockedUsernames = [];
+
+try {
+  blockedUsernames = jsonfile.readFileSync(blockedUsersFilePath);
+} catch (err) {
+  console.error('Error al leer el archivo blockedusers.json:', err);
+}
+
 const checkUsername = (req, res, next) => {
   const { username } = req.query || req.body;
 
-  if (blockedUsernames.includes(username)) {
+  if (username && blockedUsernames.includes(username)) {
     return res.status(403).json({ error: 'El nombre de usuario está bloqueado' });
   }
 
@@ -44,7 +52,6 @@ function loadDataFromBackup() {
     db.serialize(() => {
       db.run('DROP TABLE IF EXISTS users');
       db.run('CREATE TABLE users (username TEXT PRIMARY KEY, points INTEGER)');
-
       for (const [username, points] of Object.entries(data)) {
         db.run('INSERT INTO users (username, points) VALUES (?, ?)', [username, points]);
       }
@@ -131,6 +138,28 @@ app.post('/api/userdata', checkUsername, async (req, res) => {
     });
   } else {
     return res.status(400).json({ error: 'Acción no válida' });
+  }
+});
+
+app.post('/ban', (req, res) => {
+  const { username } = req.body;
+
+  if (!username) {
+    return res.status(400).json({ error: 'Se requiere el nombre de usuario' });
+  }
+
+  if (blockedUsernames.includes(username)) {
+    return res.status(400).json({ error: 'El nombre de usuario ya está bloqueado' });
+  }
+
+  blockedUsernames.push(username);
+
+  try {
+    jsonfile.writeFileSync(blockedUsersFilePath, blockedUsernames, { spaces: 2 });
+    res.json({ message: 'Nombre de usuario bloqueado' });
+  } catch (err) {
+    console.error('Error al escribir el archivo blockedusers.json:', err);
+    res.status(500).json({ error: 'Error al bloquear el nombre de usuario' });
   }
 });
 
