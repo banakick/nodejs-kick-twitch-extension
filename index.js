@@ -14,6 +14,7 @@ const backupFilePath = './db.json';
 app.use(cors(corsOptions));
 app.use(express.json());
 
+const blockedUsernames = ['bostermo27', 'nex772', 'witherdeaffox', 'lindyellowtest', 'frandroid-alt', 'frandroid'];
 const checkUsername = (req, res, next) => {
   const { username } = req.query || req.body;
 
