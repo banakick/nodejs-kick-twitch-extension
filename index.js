@@ -14,16 +14,27 @@ const backupFilePath = './db.json';
 app.use(cors(corsOptions));
 app.use(express.json());
 
-const blockedUsernames = ['bostermo27', 'nex772', 'witherdeaffox', 'lindyellowtest', 'frandroid-alt', 'frandroid'];
-
 const checkUsername = (req, res, next) => {
   const { username } = req.query || req.body;
 
-  if (username && blockedUsernames.includes(username)) {
+  if (blockedUsernames.includes(username)) {
     return res.status(403).json({ error: 'El nombre de usuario está bloqueado' });
   }
 
-  next();
+  db.get('SELECT COUNT(*) AS count FROM users WHERE username = ?', [username], (err, row) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Error al verificar el usuario' });
+    }
+
+    if (row.count > 0) {
+      if (blockedUsernames.includes(username)) {
+        return res.status(403).json({ error: 'El nombre de usuario está bloqueado' });
+      }
+    }
+
+    next();
+  });
 };
 
 function loadDataFromBackup() {
