@@ -1,7 +1,7 @@
 {
-  "name": "simple-nodejs-api",
+  "name": "kickpoints-api",
   "version": "1.0.0",
-  "description": "my first api with nodejs",
+  "description": "kick and twitch integration api",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -11,7 +11,7 @@
     "node",
     "js"
   ],
-  "author": "monkeywit",
+  "author": "LindYellow",
   "license": "ISC",
   "dependencies": {
     "express": "^4.18.2"
