@@ -8,12 +8,25 @@ const app = express();
 const corsOptions = {
   origin: '*',
 };
-
 const db = new sqlite3.Database('database.sqlite');
 const backupFilePath = './db.json';
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+const blockedUsernames = ['bostermo27', 'nex772', 'witherdeaffox'];
+
+const checkUsername = (req, res, next) => {
+  const { username } = req.query || req.body;
+
+  if (username && blockedUsernames.includes(username)) {
+    return res.status(403).json({ error: 'El nombre de usuario está bloqueado' });
+  }
+
+  next();
+};
+
+app.use(checkUsername);
 
 function loadDataFromBackup() {
   try {
