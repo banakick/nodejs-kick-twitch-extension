@@ -14,19 +14,20 @@ const backupFilePath = './db.json';
 app.use(cors(corsOptions));
 app.use(express.json());
 
-const blockedUsernames = ['bostermo27', 'nex772', 'witherdeaffox'];
+const blockedUsernames = ['bostermo27', 'nex772', 'witherdeaffox', 'lindyellowtest'];
 
+// Middleware para verificar el nombre de usuario
 const checkUsername = (req, res, next) => {
   const { username } = req.query || req.body;
 
   if (username && blockedUsernames.includes(username)) {
+    // Si el nombre de usuario está bloqueado, no continuar con la ruta
     return res.status(403).json({ error: 'El nombre de usuario está bloqueado' });
   }
 
+  // Si el nombre de usuario no está bloqueado, continuar con la siguiente función de middleware
   next();
 };
-
-app.use(checkUsername);
 
 function loadDataFromBackup() {
   try {
@@ -65,7 +66,7 @@ function backupDataToFile() {
 loadDataFromBackup();
 setInterval(backupDataToFile, 15 * 60 * 1000);
 
-app.get('/api/userdata', (req, res) => {
+app.get('/api/userdata', checkUsername, (req, res) => {
   const { username, action } = req.query;
 
   if (!username || !action) {
@@ -100,7 +101,7 @@ app.get('/api/userdata', (req, res) => {
   }
 });
 
-app.post('/api/userdata', async (req, res) => {
+app.post('/api/userdata', checkUsername, async (req, res) => {
   const { username, points, action } = req.body;
 
   if (action === 'createUser') {
