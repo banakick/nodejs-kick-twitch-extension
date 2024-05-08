@@ -133,12 +133,32 @@ app.post('/api/userdata', checkUsername, async (req, res) => {
   const { username, points, action } = req.body;
 
   if (action === 'createUser') {
-    db.run('INSERT INTO users (username, points) VALUES (?, ?)', [username, points], (err) => {
+    // Verificar si el usuario ya existe antes de intentar crearlo
+    db.get('SELECT COUNT(*) AS count FROM users WHERE username = ?', [username], (err, row) => {
       if (err) {
         console.error(err);
-        return res.status(500).json({ error: 'Error al crear usuario' });
+        return res.status(500).json({ error: 'Error al verificar el usuario' });
       }
-      res.json({ message: 'Usuario creado', points });
+
+      if (row.count > 0) {
+        // El usuario ya existe, actualizar sus puntos
+        db.run('UPDATE users SET points = ? WHERE username = ?', [points, username], (err) => {
+          if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Error al actualizar puntos del usuario' });
+          }
+          res.json({ message: 'Puntos actualizados', points });
+        });
+      } else {
+        // El usuario no existe, crearlo
+        db.run('INSERT INTO users (username, points) VALUES (?, ?)', [username, points], (err) => {
+          if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Error al crear usuario' });
+          }
+          res.json({ message: 'Usuario creado', points });
+        });
+      }
     });
   } else if (action === 'updatePoints') {
     db.run('UPDATE users SET points = ? WHERE username = ?', [points, username], (err) => {
