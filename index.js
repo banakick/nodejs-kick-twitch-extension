@@ -79,6 +79,15 @@ function backupDataToFile() {
   });
 }
 
+function updateBlockedUsersFile() {
+  try {
+    jsonfile.writeFileSync(blockedUsersFilePath, blockedUsernames, { spaces: 2 });
+    console.log('Archivo blockedusers.json actualizado');
+  } catch (err) {
+    console.error('Error al escribir el archivo blockedusers.json:', err);
+  }
+}
+
 loadDataFromBackup();
 setInterval(backupDataToFile, 15 * 60 * 1000);
 
@@ -156,6 +165,7 @@ app.post('/ban', (req, res) => {
 
   try {
     jsonfile.writeFileSync(blockedUsersFilePath, blockedUsernames, { spaces: 2 });
+    updateBlockedUsersFile(); // Llamar a la función para actualizar el archivo
     res.json({ message: 'Nombre de usuario bloqueado' });
   } catch (err) {
     console.error('Error al escribir el archivo blockedusers.json:', err);
