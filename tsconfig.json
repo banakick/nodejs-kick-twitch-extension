@@ -1,1 +1,15 @@
-{}
+{
+  "compilerOptions": {
+    "target": "ESNext", // Opcional: define la versión de ECMAScript que quieres que TypeScript compile tu código.
+    "module": "ESNext", // Indica a TypeScript que compile a módulos ES.
+    "moduleResolution": "node", // Opcional: especifica cómo se resuelven los módulos.
+    "esModuleInterop": true, // Opcional: permite importar módulos CommonJS en módulos ES.
+    "strict": true, // Opcional: activa todas las opciones de tipo estricto de TypeScript.
+    "outDir": "./dist", // Opcional: especifica la carpeta de salida para los archivos compilados.
+    "resolveJsonModule": true, // Opcional: permite importar archivos JSON.
+    "baseUrl": "./", // Opcional: establece la raíz para la resolución de módulos no relativos.
+    "paths": {
+      "*": ["node_modules/*"] // Opcional: especifica rutas de acceso para la resolución de módulos.
+    }
+  }
+}
