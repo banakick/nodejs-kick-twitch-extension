@@ -15,11 +15,6 @@ const blockedUsersFilePath = './blockedusers.json';
 app.use(cors(corsOptions));
 app.use(express.json());
 
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://kick.com');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  next();
-});
 let blockedUsernames = [];
 
 try {
