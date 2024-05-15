@@ -11,10 +11,19 @@ const corsOptions = {
 const db = new sqlite3.Database('database.sqlite');
 const backupFilePath = './db.json';
 const blockedUsersFilePath = './blockedusers.json';
+const adminsFilePath = './admins.json';
+
 
 app.use(cors(corsOptions));
 app.use(express.json());
 
+let admins = {};
+
+try {
+  admins = jsonfile.readFileSync(adminsFilePath);
+} catch (err) {
+  console.error('Error al leer el archivo admins.json:', err);
+}
 let blockedUsernames = [];
 
 try {
